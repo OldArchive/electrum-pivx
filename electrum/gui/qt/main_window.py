@@ -670,7 +670,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             _("Before reporting a bug, upgrade to the most recent version of Electrum (latest release or git HEAD), and include the version number in your report."),
             _("Try to explain not only what the bug is, but how it occurs.")
          ])
-        self.show_message(msg, title="Electrum - " + _("Reporting Bugs"), rich_text=True)
+        self.show_message(msg, title="Electrum-PIVX  - " + _("Reporting Bugs"), rich_text=True)
 
     def notify_transactions(self):
         if self.tx_notification_queue.qsize() == 0:
@@ -2502,7 +2502,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             tx = tx_from_str(txt)
             return Transaction(tx)
         except BaseException as e:
-            self.show_critical(_("Electrum was unable to parse your transaction") + ":\n" + str(e))
+            self.show_critical(_("Electrum-PIVX  was unable to parse your transaction") + ":\n" + str(e))
             return
 
     def read_tx_from_qrcode(self):
@@ -2537,7 +2537,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             with open(fileName, "r") as f:
                 file_content = f.read()
         except (ValueError, IOError, os.error) as reason:
-            self.show_critical(_("Electrum was unable to open your transaction file") + "\n" + str(reason), title=_("Unable to read file or no transaction found"))
+            self.show_critical(_("Electrum-PIVX  was unable to open your transaction file") + "\n" + str(reason), title=_("Unable to read file or no transaction found"))
             return
         return self.tx_from_text(file_content)
 
@@ -2649,7 +2649,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             self.do_export_privkeys(filename, private_keys, csv_button.isChecked())
         except (IOError, os.error) as reason:
             txt = "\n".join([
-                _("Electrum was unable to produce a private key-export."),
+                _("Electrum-PIVX  was unable to produce a private key-export."),
                 str(reason)
             ])
             self.show_critical(txt, title=_("Unable to create csv"))

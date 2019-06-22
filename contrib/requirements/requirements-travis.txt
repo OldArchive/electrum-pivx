@@ -1,3 +1,4 @@
 tox
 python-coveralls
 tox-travis
+pivx-quark-hash==1.2
