@@ -27,7 +27,6 @@ from typing import Optional, Dict, Mapping, Sequence
 
 from . import util
 from .bitcoin import hash_encode, int_to_hex, rev_hex
-from .crypto import sha256d
 from . import constants
 from .util import bfh, bh2u
 from .simple_config import SimpleConfig
@@ -80,7 +79,7 @@ def hash_header(header: dict) -> str:
 
 
 def hash_raw_header(header: str) -> str:
-    return hash_encode(sha256d(bfh(header)))
+    return hash_encode(quark_hash.getPoWHash(bfh(header)))
 
 
 # key: blockhash hex at forkpoint
