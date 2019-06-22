@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Electrum - lightweight Bitcoin client
+# Electrum - lightweight PIVX client
 # Copyright (C) 2012 thomasv@gitorious
 #
 # Permission is hereby granted, free of charge, to any person
@@ -49,9 +49,9 @@ from PyQt5.QtWidgets import (QMessageBox, QComboBox, QSystemTrayIcon, QTabWidget
                              QWidget, QMenu, QSizePolicy, QStatusBar)
 
 import electrum
-from electrum import (keystore, simple_config, ecc, constants, util, bitcoin, commands,
+from electrum import (keystore, simple_config, ecc, constants, util, pivx, commands,
                       coinchooser, paymentrequest)
-from electrum.bitcoin import COIN, is_address, TYPE_ADDRESS
+from electrum.pivx import COIN, is_address, TYPE_ADDRESS
 from electrum.plugin import run_hook
 from electrum.i18n import _
 from electrum.util import (format_time, format_satoshis, format_fee_satoshis,
@@ -239,7 +239,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
 
         # If the option hasn't been set yet
         if config.get('check_updates') is None:
-            choice = self.question(title="Electrum - " + _("Enable update check"),
+            choice = self.question(title="Electrum-PIVX - " + _("Enable update check"),
                                    msg=_("For security reasons we advise that you always use the latest version of Electrum.") + " " +
                                        _("Would you like to be notified when there is a newer version of Electrum available?"))
             config.set_key('check_updates', bool(choice), save=True)
@@ -249,7 +249,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             # to prevent GC from getting in our way.
             def on_version_received(v):
                 if UpdateCheck.is_newer(v):
-                    self.update_check_button.setText(_("Update to Electrum {} is available").format(v))
+                    self.update_check_button.setText(_("Update to Electrum-PIVX {} is available").format(v))
                     self.update_check_button.clicked.connect(lambda: self.show_update_check(v))
                     self.update_check_button.show()
             self._update_check_thread = UpdateCheckThread(self)
@@ -447,7 +447,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             self.setGeometry(100, 100, 840, 400)
 
     def watching_only_changed(self):
-        name = "Electrum Testnet" if constants.net.TESTNET else "Electrum"
+        name = "Electrum-PIVX Testnet" if constants.net.TESTNET else "Electrum-PIVX"
         title = '%s %s  -  %s' % (name, ELECTRUM_VERSION,
                                         self.wallet.basename())
         extra = [self.wallet.storage.get('wallet_type', '?')]
@@ -464,8 +464,8 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         if self.wallet.is_watching_only():
             msg = ' '.join([
                 _("This wallet is watching-only."),
-                _("This means you will not be able to spend Bitcoins with it."),
-                _("Make sure you own the seed phrase or the private keys, before you request Bitcoins to be sent to this wallet.")
+                _("This means you will not be able to spend Pivs with it."),
+                _("Make sure you own the seed phrase or the private keys, before you request Pivs to be sent to this wallet.")
             ])
             self.show_warning(msg, title=_('Watch-only wallet'))
 
@@ -482,7 +482,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         msg = ''.join([
             _("You are in testnet mode."), ' ',
             _("Testnet coins are worthless."), '\n',
-            _("Testnet is separate from the main Bitcoin network. It is used for testing.")
+            _("Testnet is separate from the main PIVX network. It is used for testing.")
         ])
         cb = QCheckBox(_("Don't show this again."))
         cb_checked = False
@@ -518,7 +518,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
                 shutil.copy2(path, new_path)
                 self.show_message(_("A copy of your wallet file was created in")+" '%s'" % str(new_path), title=_("Wallet backup created"))
             except BaseException as reason:
-                self.show_critical(_("Electrum was unable to copy your wallet file to the specified location.") + "\n" + str(reason), title=_("Unable to create backup"))
+                self.show_critical(_("Electrum-PIVX was unable to copy your wallet file to the specified location.") + "\n" + str(reason), title=_("Unable to create backup"))
 
     def update_recently_visited(self, filename):
         recent = self.config.get('recently_open', [])
@@ -612,7 +612,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         tools_menu = menubar.addMenu(_("&Tools"))
 
         # Settings / Preferences are all reserved keywords in macOS using this as work around
-        tools_menu.addAction(_("Electrum preferences") if sys.platform == 'darwin' else _("Preferences"), self.settings_dialog)
+        tools_menu.addAction(_("Electrum-PIVX preferences") if sys.platform == 'darwin' else _("Preferences"), self.settings_dialog)
         tools_menu.addAction(_("&Network"), lambda: self.gui_object.show_network_dialog(self))
         tools_menu.addAction(_("&Plugins"), self.plugins_dialog)
         tools_menu.addSeparator()
@@ -646,18 +646,18 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         d = self.network.get_donation_address()
         if d:
             host = self.network.get_parameters().host
-            self.pay_to_URI('bitcoin:%s?message=donation for %s'%(d, host))
+            self.pay_to_URI('pivx:%s?message=donation for %s'%(d, host))
         else:
             self.show_error(_('No donation address for this server'))
 
     def show_about(self):
         QMessageBox.about(self, "Electrum",
                           (_("Version")+" %s" % ELECTRUM_VERSION + "\n\n" +
-                           _("Electrum's focus is speed, with low resource usage and simplifying Bitcoin.") + " " +
+                           _("Electrum's focus is speed, with low resource usage and simplifying PIVX.") + " " +
                            _("You do not need to perform regular backups, because your wallet can be "
                               "recovered from a secret phrase that you can memorize or write on paper.") + " " +
                            _("Startup times are instant because it operates in conjunction with high-performance "
-                              "servers that handle the most complicated parts of the Bitcoin system.") + "\n\n" +
+                              "servers that handle the most complicated parts of the PIVX system.") + "\n\n" +
                            _("Uses icons from the Icons8 icon pack (icons8.com).")))
 
     def show_update_check(self, version=None):
@@ -903,7 +903,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         self.receive_address_e = ButtonsLineEdit()
         self.receive_address_e.addCopyButton(self.app)
         self.receive_address_e.setReadOnly(True)
-        msg = _('Bitcoin address where the payment should be received. Note that each payment request uses a different Bitcoin address.')
+        msg = _('PIVX address where the payment should be received. Note that each payment request uses a different PIVX address.')
         self.receive_address_label = HelpLabel(_('Receiving address'), msg)
         self.receive_address_e.textChanged.connect(self.update_receive_qr)
         self.receive_address_e.textChanged.connect(self.update_receive_address_styling)
@@ -934,8 +934,8 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         msg = ' '.join([
             _('Expiration date of your request.'),
             _('This information is seen by the recipient if you send them a signed payment request.'),
-            _('Expired requests have to be deleted manually from your list, in order to free the corresponding Bitcoin addresses.'),
-            _('The bitcoin address never expires and will always be part of this electrum wallet.'),
+            _('Expired requests have to be deleted manually from your list, in order to free the corresponding PIVX addresses.'),
+            _('The pivx address never expires and will always be part of this electrum wallet.'),
         ])
         grid.addWidget(HelpLabel(_('Request expires'), msg), 3, 0)
         grid.addWidget(self.expires_combo, 3, 1)
@@ -1004,7 +1004,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             extra_query_params['exp'] = str(int(req.get('exp')))
         if req.get('name') and req.get('sig'):
             sig = bfh(req.get('sig'))
-            sig = bitcoin.base_encode(sig, base=58)
+            sig = pivx.base_encode(sig, base=58)
             extra_query_params['name'] = req['name']
             extra_query_params['sig'] = sig
         uri = util.create_bip21_uri(addr, amount, message, extra_query_params=extra_query_params)
@@ -1136,7 +1136,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         self.tabs.setCurrentIndex(self.tabs.indexOf(self.receive_tab))
 
     def receive_at(self, addr):
-        if not bitcoin.is_address(addr):
+        if not pivx.is_address(addr):
             return
         self.show_receive_tab()
         self.receive_address_e.setText(addr)
@@ -1177,7 +1177,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         self.amount_e = BTCAmountEdit(self.get_decimal_point)
         self.payto_e = PayToEdit(self)
         msg = _('Recipient of the funds.') + '\n\n'\
-              + _('You may enter a Bitcoin address, a label from your list of contacts (a list of completions will be proposed), or an alias (email-like address that forwards to a Bitcoin address)')
+              + _('You may enter a PIVX address, a label from your list of contacts (a list of completions will be proposed), or an alias (email-like address that forwards to a PIVX address)')
         payto_label = HelpLabel(_('Pay to'), msg)
         grid.addWidget(payto_label, 1, 0)
         grid.addWidget(self.payto_e, 1, 1, 1, -1)
@@ -1223,7 +1223,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         hbox.addStretch(1)
         grid.addLayout(hbox, 4, 4)
 
-        msg = _('Bitcoin transactions are in general not free. A transaction fee is paid by the sender of the funds.') + '\n\n'\
+        msg = _('PIVX transactions are in general not free. A transaction fee is paid by the sender of the funds.') + '\n\n'\
               + _('The amount of fee can be decided freely by the sender. However, transactions with low fees take more time to be processed.') + '\n\n'\
               + _('A suggested fee is automatically added to this field. You may override it. The suggested fee increases with the size of the transaction.')
         self.fee_e_label = HelpLabel(_('Fee'), msg)
@@ -1627,10 +1627,10 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
 
         for o in outputs:
             if o.address is None:
-                self.show_error(_('Bitcoin Address is None'))
+                self.show_error(_('PIVX Address is None'))
                 return True
-            if o.type == TYPE_ADDRESS and not bitcoin.is_address(o.address):
-                self.show_error(_('Invalid Bitcoin Address'))
+            if o.type == TYPE_ADDRESS and not pivx.is_address(o.address):
+                self.show_error(_('Invalid PIVX Address'))
                 return True
             if o.value is None:
                 self.show_error(_('Invalid Amount'))
@@ -2082,7 +2082,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             'electrum': electrum,
             'daemon': self.gui_object.daemon,
             'util': util,
-            'bitcoin': bitcoin,
+            'pivx': pivx,
         })
 
         c = commands.Commands(self.config, self.wallet, self.network, lambda: self.console.set_json(True))
@@ -2310,7 +2310,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             self.logger.exception('')
             self.show_message(str(e))
             return
-        xtype = bitcoin.deserialize_privkey(pk)[0]
+        xtype = pivx.deserialize_privkey(pk)[0]
         d = WindowModalDialog(self, _("Private key"))
         d.setMinimumSize(600, 150)
         vbox = QVBoxLayout()
@@ -2339,8 +2339,8 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
     def do_sign(self, address, message, signature, password):
         address  = address.text().strip()
         message = message.toPlainText().strip()
-        if not bitcoin.is_address(address):
-            self.show_message(_('Invalid Bitcoin address.'))
+        if not pivx.is_address(address):
+            self.show_message(_('Invalid PIVX address.'))
             return
         if self.wallet.is_watching_only():
             self.show_message(_('This is a watching-only wallet.'))
@@ -2367,8 +2367,8 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
     def do_verify(self, address, message, signature):
         address  = address.text().strip()
         message = message.toPlainText().strip().encode('utf-8')
-        if not bitcoin.is_address(address):
-            self.show_message(_('Invalid Bitcoin address.'))
+        if not pivx.is_address(address):
+            self.show_message(_('Invalid PIVX address.'))
             return
         try:
             # This can throw on invalid base64
@@ -2514,13 +2514,13 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             return
         if not data:
             return
-        # if the user scanned a bitcoin URI
-        if str(data).startswith("bitcoin:"):
+        # if the user scanned a pivx URI
+        if str(data).startswith("pivx:"):
             self.pay_to_URI(data)
             return
         # else if the user scanned an offline signed tx
         try:
-            data = bh2u(bitcoin.base_decode(data, length=None, base=43))
+            data = bh2u(pivx.base_decode(data, length=None, base=43))
         except BaseException as e:
             self.show_error((_('Could not decode QR code')+':\n{}').format(repr(e)))
             return
@@ -2720,7 +2720,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
 
         def get_address():
             addr = str(address_e.text()).strip()
-            if bitcoin.is_address(addr):
+            if pivx.is_address(addr):
                 return addr
 
         def get_pk(*, raise_on_error=False):

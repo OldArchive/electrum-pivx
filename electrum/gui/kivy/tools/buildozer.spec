@@ -1,13 +1,13 @@
 [app]
 
 # (str) Title of your application
-title = Electrum
+title = Electrum-PIVX
 
 # (str) Package name
-package.name = Electrum
+package.name = electrum-pivx
 
 # (str) Package domain (needed for android/ios packaging)
-package.domain = org.electrum
+package.domain = org.electrum.pivx
 
 # (str) Source code where the main.py live
 source.dir = .
@@ -42,7 +42,7 @@ requirements =
     plyer,
     kivy==82d561d62577757d478df52173610f925c05ecab,
     libffi,
-    libsecp256k1
+    libsecp256k1,pivx_quark_hash
 
 # (str) Presplash of the application
 #presplash.filename = %(source.dir)s/gui/kivy/theming/splash.png

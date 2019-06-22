@@ -132,7 +132,7 @@ Section
   CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\${PRODUCT_NAME} Testnet.lnk" "$INSTDIR\electrum-pivx-${PRODUCT_VERSION}.exe" "--testnet" "$INSTDIR\electrum-pivx-${PRODUCT_VERSION}.exe" 0
 
 
-  ;Links bitcoin: URI's to Electrum
+  ;Links pivx: URI's to Electrum
   WriteRegStr HKCU "Software\Classes\pivx" "" "URL:pivx Protocol"
   WriteRegStr HKCU "Software\Classes\pivx" "URL Protocol" ""
   WriteRegStr HKCU "Software\Classes\pivx" "DefaultIcon" "$\"$INSTDIR\electrum-pivx.ico, 0$\""
