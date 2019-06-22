@@ -22,6 +22,7 @@
 # SOFTWARE.
 import os
 import threading
+import pivx_quark_hash as quark_hash
 from typing import Optional, Dict, Mapping, Sequence
 
 from . import util
