@@ -14,7 +14,7 @@ from electrum.wallet import Wallet, InternalAddressCorruption
 from electrum.paymentrequest import InvoiceStore
 from electrum.util import profiler, InvalidPassword, send_exception_to_crash_reporter
 from electrum.plugin import run_hook
-from electrum.util import format_satoshis, format_satoshis_plain
+from electrum.util import format_satoshis, format_satoshis_plain, format_fee_satoshis
 from electrum.paymentrequest import PR_UNPAID, PR_PAID, PR_UNKNOWN, PR_EXPIRED
 from electrum import blockchain
 from electrum.network import Network, TxBroadcastError, BestEffortRequestFailed
@@ -494,12 +494,11 @@ class ElectrumWindow(App):
         ''' This is the start point of the kivy ui
         '''
         import time
-        Logger.info('Time to on_start: {} <<<<<<<<'.format(time.clock()))
-        win = Window
-        win.bind(size=self.on_size, on_keyboard=self.on_keyboard)
-        win.bind(on_key_down=self.on_key_down)
-        #win.softinput_mode = 'below_target'
-        self.on_size(win, win.size)
+        Logger.info('Time to on_start: {} <<<<<<<<'.format(time.process_time()))
+        Window.bind(size=self.on_size, on_keyboard=self.on_keyboard)
+        Window.bind(on_key_down=self.on_key_down)
+        #Window.softinput_mode = 'below_target'
+        self.on_size(Window, Window.size)
         self.init_ui()
         crash_reporter.ExceptionHook(self)
         # init plugins
@@ -807,6 +806,10 @@ class ElectrumWindow(App):
 
     def format_amount_and_units(self, x):
         return format_satoshis_plain(x, self.decimal_point()) + ' ' + self.base_unit
+
+    def format_fee_rate(self, fee_rate):
+        # fee_rate is in sat/kB
+        return format_fee_satoshis(fee_rate/1000) + ' sat/byte'
 
     #@profiler
     def update_wallet(self, *dt):
