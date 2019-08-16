@@ -351,7 +351,8 @@ class FxThread(ThreadJob):
         self.logger.info(f"using exchange {name}")
         if self.config_exchange() != name:
             self.config.set_key('use_exchange', name, True)
-        self.exchange = class_(self.on_quotes, self.on_history)
+        assert issubclass(class_, ExchangeBase), f"unexpected type {class_} for {name}"
+        self.exchange = class_(self.on_quotes, self.on_history)  # type: ExchangeBase
         # A new exchange means new fx quotes, initially empty.  Force
         # a quote refresh
         self.trigger_update()
@@ -402,9 +403,11 @@ class FxThread(ThreadJob):
         rate = self.exchange.historical_rate(self.ccy, d_t)
         # Frequently there is no rate for today, until tomorrow :)
         # Use spot quotes in that case
-        if rate == 'NaN' and (datetime.today().date() - d_t.date()).days <= 2:
+        if rate in ('NaN', None) and (datetime.today().date() - d_t.date()).days <= 2:
             rate = self.exchange.quotes.get(self.ccy, 'NaN')
             self.history_used_spot = True
+        if rate is None:
+            rate = 'NaN'
         return Decimal(rate)
 
     def historical_value_str(self, satoshis, d_t):

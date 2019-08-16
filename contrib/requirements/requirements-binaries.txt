@@ -1,4 +1,4 @@
 PyQt5<5.12
-pycryptodomex<3.8
+pycryptodomex
 PyQt5-sip<=4.19.13
 pivx-quark-hash==1.2

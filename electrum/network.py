@@ -52,7 +52,8 @@ from . import blockchain
 from . import bitcoin
 from .blockchain import (Blockchain, ZC_HEADER_SIZE)
 from .interface import (Interface, serialize_server, deserialize_server,
-                        RequestTimedOut, NetworkTimeout, BUCKET_NAME_OF_ONION_SERVERS)
+                        RequestTimedOut, NetworkTimeout, BUCKET_NAME_OF_ONION_SERVERS,
+                        NetworkException)
 from .version import PROTOCOL_VERSION
 from .simple_config import SimpleConfig
 from .i18n import _
@@ -174,10 +175,10 @@ def deserialize_proxy(s: str) -> Optional[dict]:
     return proxy
 
 
-class BestEffortRequestFailed(Exception): pass
+class BestEffortRequestFailed(NetworkException): pass
 
 
-class TxBroadcastError(Exception):
+class TxBroadcastError(NetworkException):
     def get_message_for_gui(self):
         raise NotImplementedError()
 
@@ -205,7 +206,7 @@ class TxBroadcastUnknownError(TxBroadcastError):
                     _("Consider trying to connect to a different server, or updating Electrum."))
 
 
-class UntrustedServerReturnedError(Exception):
+class UntrustedServerReturnedError(NetworkException):
     def __init__(self, *, original_exception):
         self.original_exception = original_exception
 
@@ -476,20 +477,26 @@ class Network(Logger):
 
     @with_recent_servers_lock
     def get_servers(self):
-        # start with hardcoded servers
-        out = dict(constants.net.DEFAULT_SERVERS)  # copy
+        # note: order of sources when adding servers here is crucial!
+        # don't let "server_peers" overwrite anything,
+        # otherwise main server can eclipse the client
+        out = dict()
+        # add servers received from main interface
+        server_peers = self.server_peers
+        if server_peers:
+            out.update(filter_version(server_peers.copy()))
+        # hardcoded servers
+        out.update(constants.net.DEFAULT_SERVERS)
         # add recent servers
         for s in self.recent_servers:
             try:
                 host, port, protocol = deserialize_server(s)
             except:
                 continue
-            if host not in out:
+            if host in out:
+                out[host].update({protocol: port})
+            else:
                 out[host] = {protocol: port}
-        # add servers received from main interface
-        server_peers = self.server_peers
-        if server_peers:
-            out.update(filter_version(server_peers.copy()))
         # potentially filter out some
         if self.config.get('noonion'):
             out = filter_noonion(out)

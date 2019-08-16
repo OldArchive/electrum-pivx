@@ -1,11 +1,13 @@
-Electrum - Lightweight Bitcoin client
+Electrum - Lightweight PIVX client
 =====================================
 
 ::
 
   Licence: MIT Licence
   Author: Thomas Voegtlin
+  Modifed for PIVX By: akshaynexus
   Language: Python (>= 3.6)
+  Refernces used:Zephyr for header parsing changes
   Homepage: https://electrum.org/
 
 
@@ -75,7 +77,7 @@ Compile the protobuf description file::
 Create translations (optional)::
 
     sudo apt-get install python-requests gettext
-    ./contrib/make_locale
+    ./contrib/pull_locale
 
 
 
