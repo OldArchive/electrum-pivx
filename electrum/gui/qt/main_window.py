@@ -49,9 +49,9 @@ from PyQt5.QtWidgets import (QMessageBox, QComboBox, QSystemTrayIcon, QTabWidget
                              QWidget, QMenu, QSizePolicy, QStatusBar)
 
 import electrum
-from electrum import (keystore, simple_config, ecc, constants, util, pivx, commands,
+from electrum import (keystore, simple_config, ecc, constants, util, bitcoin, commands,
                       coinchooser, paymentrequest)
-from electrum.pivx import COIN, is_address, TYPE_ADDRESS
+from electrum.bitcoin import COIN, is_address, TYPE_ADDRESS
 from electrum.plugin import run_hook
 from electrum.i18n import _
 from electrum.util import (format_time, format_satoshis, format_fee_satoshis,
@@ -1004,7 +1004,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             extra_query_params['exp'] = str(int(req.get('exp')))
         if req.get('name') and req.get('sig'):
             sig = bfh(req.get('sig'))
-            sig = pivx.base_encode(sig, base=58)
+            sig = bitcoin.base_encode(sig, base=58)
             extra_query_params['name'] = req['name']
             extra_query_params['sig'] = sig
         uri = util.create_bip21_uri(addr, amount, message, extra_query_params=extra_query_params)
@@ -1136,7 +1136,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         self.tabs.setCurrentIndex(self.tabs.indexOf(self.receive_tab))
 
     def receive_at(self, addr):
-        if not pivx.is_address(addr):
+        if not bitcoin.is_address(addr):
             return
         self.show_receive_tab()
         self.receive_address_e.setText(addr)
@@ -1629,7 +1629,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             if o.address is None:
                 self.show_error(_('PIVX Address is None'))
                 return True
-            if o.type == TYPE_ADDRESS and not pivx.is_address(o.address):
+            if o.type == TYPE_ADDRESS and not bitcoin.is_address(o.address):
                 self.show_error(_('Invalid PIVX Address'))
                 return True
             if o.value is None:
@@ -2082,7 +2082,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             'electrum': electrum,
             'daemon': self.gui_object.daemon,
             'util': util,
-            'pivx': pivx,
+            'bitcoin': bitcoin,
         })
 
         c = commands.Commands(self.config, self.wallet, self.network, lambda: self.console.set_json(True))
@@ -2310,7 +2310,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             self.logger.exception('')
             self.show_message(str(e))
             return
-        xtype = pivx.deserialize_privkey(pk)[0]
+        xtype = bitcoin.deserialize_privkey(pk)[0]
         d = WindowModalDialog(self, _("Private key"))
         d.setMinimumSize(600, 150)
         vbox = QVBoxLayout()
@@ -2339,7 +2339,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
     def do_sign(self, address, message, signature, password):
         address  = address.text().strip()
         message = message.toPlainText().strip()
-        if not pivx.is_address(address):
+        if not bitcoin.is_address(address):
             self.show_message(_('Invalid PIVX address.'))
             return
         if self.wallet.is_watching_only():
@@ -2367,7 +2367,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
     def do_verify(self, address, message, signature):
         address  = address.text().strip()
         message = message.toPlainText().strip().encode('utf-8')
-        if not pivx.is_address(address):
+        if not bitcoin.is_address(address):
             self.show_message(_('Invalid PIVX address.'))
             return
         try:
@@ -2520,7 +2520,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             return
         # else if the user scanned an offline signed tx
         try:
-            data = bh2u(pivx.base_decode(data, length=None, base=43))
+            data = bh2u(bitcoin.base_decode(data, length=None, base=43))
         except BaseException as e:
             self.show_error((_('Could not decode QR code')+':\n{}').format(repr(e)))
             return
@@ -2720,7 +2720,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
 
         def get_address():
             addr = str(address_e.text()).strip()
-            if pivx.is_address(addr):
+            if bitcoin.is_address(addr):
                 return addr
 
         def get_pk(*, raise_on_error=False):

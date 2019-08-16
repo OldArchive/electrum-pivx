@@ -50,7 +50,7 @@ from .bitcoin import COIN
 from . import constants
 from . import blockchain
 from . import bitcoin
-from .blockchain import Blockchain, HEADER_SIZE
+from .blockchain import Blockchain, ZC_HEADER_SIZE
 from .interface import (Interface, serialize_server, deserialize_server,
                         RequestTimedOut, NetworkTimeout, BUCKET_NAME_OF_ONION_SERVERS)
 from .version import PROTOCOL_VERSION
@@ -793,15 +793,19 @@ class Network(Logger):
     async def _init_headers_file(self):
         b = blockchain.get_best_chain()
         filename = b.path()
-        length = HEADER_SIZE * len(constants.net.CHECKPOINTS) * 2016
+        len_checkpoints = len(constants.net.CHECKPOINTS)
+        length = ZC_HEADER_SIZE * len_checkpoints * 2016
         if not os.path.exists(filename) or os.path.getsize(filename) < length:
             with open(filename, 'wb') as f:
-                if length > 0:
-                    f.seek(length-1)
-                    f.write(b'\x00')
+                for i in range(len_checkpoints):
+                    for height, header_data in b.checkpoints[i][2]:
+                        f.seek(height*ZC_HEADER_SIZE)
+                        bin_header = util.bfh(header_data).ljust(ZC_HEADER_SIZE, util.bfh("00"))
+                        f.write(bin_header)
             util.ensure_sparse_file(filename)
         with b.lock:
             b.update_size()
+
 
     def best_effort_reliable(func):
         async def make_reliable_wrapper(self, *args, **kwargs):

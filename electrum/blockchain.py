@@ -22,22 +22,26 @@
 # SOFTWARE.
 import os
 import threading
-import pivx_quark_hash as quark_hash
 from typing import Optional, Dict, Mapping, Sequence
 
 from . import util
 from .bitcoin import hash_encode, int_to_hex, rev_hex
+from .crypto import sha256d
 from . import constants
 from .util import bfh, bh2u
 from .simple_config import SimpleConfig
+from .crypto import PoWHash
 from .logging import get_logger, Logger
 
 
 _logger = get_logger(__name__)
 
-HEADER_SIZE = 80  # bytes
-MAX_TARGET = 0x00000000FFFF0000000000000000000000000000000000000000000000000000
+HEADER_SIZE = 80
+ZC_HEADER_SIZE = 112
 
+MAX_TARGET = 0x00000FFFFF000000000000000000000000000000000000000000000000000000
+POW_TARGET_SPACING = int(1 * 60)  # PIVX: 1 minute
+DGW_PAST_BLOCKS = 24
 
 class MissingHeader(Exception):
     pass
@@ -52,12 +56,15 @@ def serialize_header(header_dict: dict) -> str:
         + int_to_hex(int(header_dict['timestamp']), 4) \
         + int_to_hex(int(header_dict['bits']), 4) \
         + int_to_hex(int(header_dict['nonce']), 4)
+
+    if header_dict['version'] >= ZC_VERSION:
+        s += rev_hex(header_dict['accumulator_checkpoint'])
     return s
 
 def deserialize_header(s: bytes, height: int) -> dict:
     if not s:
         raise InvalidHeader('Invalid header: {}'.format(s))
-    if len(s) != HEADER_SIZE:
+    if len(s) != ZC_HEADER_SIZE:
         raise InvalidHeader('Invalid header length: {}'.format(len(s)))
     hex_to_int = lambda s: int.from_bytes(s, byteorder='little')
     h = {}
@@ -67,8 +74,17 @@ def deserialize_header(s: bytes, height: int) -> dict:
     h['timestamp'] = hex_to_int(s[68:72])
     h['bits'] = hex_to_int(s[72:76])
     h['nonce'] = hex_to_int(s[76:80])
+
+    try:
+        ZC_VERSION
+    except NameError:
+        pass
+    else:
+        if h['version'] >= ZC_VERSION:
+            h['accumulator_checkpoint'] = hash_encode(s[80:112])
     h['block_height'] = height
     return h
+
 
 def hash_header(header: dict) -> str:
     if header is None:
@@ -78,7 +94,11 @@ def hash_header(header: dict) -> str:
     return hash_raw_header(serialize_header(header))
 
 
-def hash_raw_header(header: str) -> str:
+def hash_raw_header(headerStr: str) -> str:
+    header = bfh(headerStr)
+    if header[0] >= ZC_VERSION:
+        return hash_encode(sha256d(header))
+    else:
     return hash_encode(quark_hash.getPoWHash(bfh(header)))
 
 
@@ -173,6 +193,10 @@ class Blockchain(Logger):
             raise Exception(f"cannot fork below max checkpoint. forkpoint: {forkpoint}")
         Logger.__init__(self)
         self.config = config
+        global POS_BLOCK
+        POS_BLOCK = constants.net.POS_BLOCK
+        global ZC_VERSION
+        ZC_VERSION = constants.net.ZC_VERSION
         self.forkpoint = forkpoint  # height of first header
         self.parent = parent
         self._forkpoint_hash = forkpoint_hash  # blockhash at forkpoint. "first hash"
@@ -278,7 +302,7 @@ class Blockchain(Logger):
     @with_lock
     def update_size(self) -> None:
         p = self.path()
-        self._size = os.path.getsize(p)//HEADER_SIZE if os.path.exists(p) else 0
+        self._size = os.path.getsize(p)//ZC_HEADER_SIZE if os.path.exists(p) else 0
 
     @classmethod
     def verify_header(cls, header: dict, prev_hash: str, target: int, expected_header_hash: str=None) -> None:
@@ -287,8 +311,11 @@ class Blockchain(Logger):
             raise Exception("hash mismatches with expected: {} vs {}".format(expected_header_hash, _hash))
         if prev_hash != header.get('prev_block_hash'):
             raise Exception("prev hash mismatch: %s vs %s" % (prev_hash, header.get('prev_block_hash')))
-        if constants.net.TESTNET:
+
+        height = header.get('block_height')
+        if (height == 0) or (height >= POS_BLOCK) or (constants.net.REGTEST):
             return
+
         bits = cls.target_to_bits(target)
         if bits != header.get('bits'):
             raise Exception("bits mismatch: %s vs %s" % (bits, header.get('bits')))
@@ -297,19 +324,27 @@ class Blockchain(Logger):
             raise Exception(f"insufficient proof of work: {block_hash_as_num} vs target {target}")
 
     def verify_chunk(self, index: int, data: bytes) -> None:
-        num = len(data) // HEADER_SIZE
         start_height = index * 2016
+        num = len(data) // ZC_HEADER_SIZE
         prev_hash = self.get_hash(start_height - 1)
-        target = self.get_target(index-1)
+        chunk_headers = {'empty': True}
         for i in range(num):
             height = start_height + i
             try:
                 expected_header_hash = self.get_hash(height)
             except MissingHeader:
                 expected_header_hash = None
-            raw_header = data[i*HEADER_SIZE : (i+1)*HEADER_SIZE]
-            header = deserialize_header(raw_header, index*2016 + i)
+            raw_header = data[i*ZC_HEADER_SIZE : (i+1)*ZC_HEADER_SIZE]
+            height = index * 2016 + i
+            header = deserialize_header(raw_header, height)
+            target = self.get_target(height, chunk_headers)
             self.verify_header(header, prev_hash, target, expected_header_hash)
+
+            chunk_headers[height] = header
+            if i == 0:
+                chunk_headers['min_height'] = height
+                chunk_headers['empty'] = False
+            chunk_headers['max_height'] = height
             prev_hash = hash_header(header)
 
     @with_lock
@@ -328,6 +363,8 @@ class Blockchain(Logger):
     @with_lock
     def save_chunk(self, index: int, chunk: bytes):
         assert index >= 0, index
+        assert len(chunk) % ZC_HEADER_SIZE == 0
+
         chunk_within_checkpoint_region = index < len(self.checkpoints)
         # chunks in checkpoint region are the responsibility of the 'main chain'
         if chunk_within_checkpoint_region and self.parent is not None:
@@ -336,7 +373,7 @@ class Blockchain(Logger):
             return
 
         delta_height = (index * 2016 - self.forkpoint)
-        delta_bytes = delta_height * HEADER_SIZE
+        delta_bytes = delta_height * ZC_HEADER_SIZE
         # if this chunk contains our forkpoint, only save the part after forkpoint
         # (the part before is the responsibility of the parent)
         if delta_bytes < 0:
@@ -389,14 +426,14 @@ class Blockchain(Logger):
         assert forkpoint > parent.forkpoint, (f"forkpoint of parent chain ({parent.forkpoint}) "
                                               f"should be at lower height than children's ({forkpoint})")
         with open(parent.path(), 'rb') as f:
-            f.seek((forkpoint - parent.forkpoint)*HEADER_SIZE)
-            parent_data = f.read(parent_branch_size*HEADER_SIZE)
+            f.seek((forkpoint - parent.forkpoint)*ZC_HEADER_SIZE)
+            parent_data = f.read(parent_branch_size*ZC_HEADER_SIZE)
         self.write(parent_data, 0)
-        parent.write(my_data, (forkpoint - parent.forkpoint)*HEADER_SIZE)
+        parent.write(my_data, (forkpoint - parent.forkpoint)*ZC_HEADER_SIZE)
         # swap parameters
         self.parent, parent.parent = parent.parent, self  # type: Optional[Blockchain], Optional[Blockchain]
         self.forkpoint, parent.forkpoint = parent.forkpoint, self.forkpoint
-        self._forkpoint_hash, parent._forkpoint_hash = parent._forkpoint_hash, hash_raw_header(bh2u(parent_data[:HEADER_SIZE]))
+        self._forkpoint_hash, parent._forkpoint_hash = parent._forkpoint_hash, hash_raw_header(bh2u(parent_data[:ZC_HEADER_SIZE]))
         self._prev_hash, parent._prev_hash = parent._prev_hash, self._prev_hash
         # parent's new name
         os.replace(child_old_name, parent.path())
@@ -416,7 +453,7 @@ class Blockchain(Logger):
         if os.path.exists(path):
             return
         elif not os.path.exists(util.get_headers_dir(self.config)):
-            raise FileNotFoundError('Electrum headers_dir does not exist. Was it deleted while running?')
+            raise FileNotFoundError('Zephyr headers_dir does not exist. Was it deleted while running?')
         else:
             raise FileNotFoundError('Cannot find headers file but headers_dir is there. Should be at {}'.format(path))
 
@@ -425,7 +462,7 @@ class Blockchain(Logger):
         filename = self.path()
         self.assert_headers_file_available(filename)
         with open(filename, 'rb+') as f:
-            if truncate and offset != self._size * HEADER_SIZE:
+            if truncate and offset != self._size * ZC_HEADER_SIZE:
                 f.seek(offset)
                 f.truncate()
             f.seek(offset)
@@ -437,11 +474,11 @@ class Blockchain(Logger):
     @with_lock
     def save_header(self, header: dict) -> None:
         delta = header.get('block_height') - self.forkpoint
-        data = bfh(serialize_header(header))
+        data = bfh(serialize_header(header)).ljust(ZC_HEADER_SIZE, bfh("00"))
         # headers are only _appended_ to the end:
         assert delta == self.size(), (delta, self.size())
-        assert len(data) == HEADER_SIZE
-        self.write(data, delta*HEADER_SIZE)
+        assert len(data) == ZC_HEADER_SIZE
+        self.write(data, delta*ZC_HEADER_SIZE)
         self.swap_with_parent()
 
     @with_lock
@@ -456,11 +493,11 @@ class Blockchain(Logger):
         name = self.path()
         self.assert_headers_file_available(name)
         with open(name, 'rb') as f:
-            f.seek(delta * HEADER_SIZE)
-            h = f.read(HEADER_SIZE)
-            if len(h) < HEADER_SIZE:
+            f.seek(delta * ZC_HEADER_SIZE)
+            h = f.read(ZC_HEADER_SIZE)
+            if len(h) < ZC_HEADER_SIZE:
                 raise Exception('Expected to read a full header. This was only {} bytes'.format(len(h)))
-        if h == bytes([0])*HEADER_SIZE:
+        if h == bytes([0])*ZC_HEADER_SIZE:
             return None
         return deserialize_header(h, height)
 
@@ -481,7 +518,7 @@ class Blockchain(Logger):
             return constants.net.GENESIS
         elif is_height_checkpoint():
             index = height // 2016
-            h, t = self.checkpoints[index]
+            h, t, extra_headers = self.checkpoints[index]
             return h
         else:
             header = self.read_header(height)
@@ -489,27 +526,59 @@ class Blockchain(Logger):
                 raise MissingHeader(height)
             return hash_header(header)
 
-    def get_target(self, index: int) -> int:
-        # compute target from chunk x, used in chunk x+1
-        if constants.net.TESTNET:
-            return 0
-        if index == -1:
+    def get_target(self, height: int, chunk_headers: Optional[dict]=None) -> int:
+        if chunk_headers is None:
+            chunk_headers = {'empty': True}
+
+        return self.get_target_dgw_v3(height, chunk_headers)
+
+    def get_target_dgw_v3(self, height: int, chunk_headers: Optional[dict]) -> int:
+        if height <= 24:
             return MAX_TARGET
-        if index < len(self.checkpoints):
-            h, t = self.checkpoints[index]
-            return t
-        # new target
-        first = self.read_header(index * 2016)
-        last = self.read_header(index * 2016 + 2015)
-        if not first or not last:
-            raise MissingHeader()
-        bits = last.get('bits')
-        target = self.bits_to_target(bits)
-        nActualTimespan = last.get('timestamp') - first.get('timestamp')
-        nTargetTimespan = 14 * 24 * 60 * 60
-        nActualTimespan = max(nActualTimespan, nTargetTimespan // 4)
-        nActualTimespan = min(nActualTimespan, nTargetTimespan * 4)
-        new_target = min(MAX_TARGET, (target * nActualTimespan) // nTargetTimespan)
+
+        if chunk_headers['empty']:
+            chunk_empty = True
+        else:
+            chunk_empty = False
+            min_height = chunk_headers['min_height']
+            max_height = chunk_headers['max_height']
+
+        count_blocks = 1
+        while count_blocks <= DGW_PAST_BLOCKS:
+            reading_h = height - count_blocks
+            reading_header = self.read_header(reading_h)
+            if not reading_header and not chunk_empty \
+                and min_height <= reading_h <= max_height:
+                    reading_header = chunk_headers[reading_h]
+            if not reading_header:
+                raise MissingHeader()
+            reading_time = reading_header.get('timestamp')
+            reading_target = self.bits_to_target(reading_header.get('bits'))
+
+            if count_blocks == 1:
+                past_target_avg = reading_target
+                last_time = reading_time
+            past_target_avg = \
+                (past_target_avg * count_blocks + reading_target) // \
+                    (count_blocks + 1)
+
+            count_blocks += 1
+
+        new_target = past_target_avg
+        actual_timespan = last_time - reading_time
+        target_timespan = DGW_PAST_BLOCKS * POW_TARGET_SPACING
+
+        if actual_timespan < target_timespan // 3:
+            actual_timespan = target_timespan // 3
+        if actual_timespan > target_timespan * 3:
+            actual_timespan = target_timespan * 3
+
+        new_target *= actual_timespan
+        new_target //= target_timespan
+
+        if new_target > MAX_TARGET:
+            return MAX_TARGET
+
         # not any target can be represented in 32 bits:
         new_target = self.bits_to_target(self.target_to_bits(new_target))
         return new_target
@@ -517,8 +586,8 @@ class Blockchain(Logger):
     @classmethod
     def bits_to_target(cls, bits: int) -> int:
         bitsN = (bits >> 24) & 0xff
-        if not (0x03 <= bitsN <= 0x1d):
-            raise Exception("First part of bits should be in [0x03, 0x1d]")
+        if not (0x03 <= bitsN <= 0x1e):
+            raise Exception("First part of bits should be in [0x03, 0x1e]")
         bitsBase = bits & 0xffffff
         if not (0x8000 <= bitsBase <= 0x7fffff):
             raise Exception("Second part of bits should be in [0x8000, 0x7fffff]")
@@ -546,10 +615,6 @@ class Blockchain(Logger):
     def get_chainwork(self, height=None) -> int:
         if height is None:
             height = max(0, self.height())
-        if constants.net.TESTNET:
-            # On testnet/regtest, difficulty works somewhat different.
-            # It's out of scope to properly implement that.
-            return height
         last_retarget = height // 2016 * 2016 - 1
         cached_height = last_retarget
         while _CHAINWORK_CACHE.get(self.get_hash(cached_height)) is None:
@@ -584,7 +649,7 @@ class Blockchain(Logger):
         if prev_hash != header.get('prev_block_hash'):
             return False
         try:
-            target = self.get_target(height // 2016 - 1)
+            target = self.get_target(height)
         except MissingHeader:
             return False
         try:
@@ -596,9 +661,17 @@ class Blockchain(Logger):
     def connect_chunk(self, idx: int, hexdata: str) -> bool:
         assert idx >= 0, idx
         try:
+            start = idx * 2016
             data = bfh(hexdata)
-            self.verify_chunk(idx, data)
-            self.save_chunk(idx, data)
+            h_data = bytes()
+            for i in range(0, len(data), HEADER_SIZE):
+                if data[i] >= 4:
+                    h_data += data[i:]
+                    break
+                h_data += data[i:i+HEADER_SIZE].ljust(ZC_HEADER_SIZE, bfh("00"))
+
+            self.verify_chunk(idx, h_data)
+            self.save_chunk(idx, h_data)
             return True
         except BaseException as e:
             self.logger.info(f'verify_chunk idx {idx} failed: {repr(e)}')
@@ -609,9 +682,24 @@ class Blockchain(Logger):
         cp = []
         n = self.height() // 2016
         for index in range(n):
-            h = self.get_hash((index+1) * 2016 -1)
-            target = self.get_target(index)
-            cp.append((h, target))
+            height = (index + 1) * 2016 - 1
+            h = self.get_hash(height)
+            target = self.get_target(height)
+            if len(h.strip('0')) == 0:
+                raise Exception('%s file has not enough data.' % self.path())
+            dgw3_headers = []
+            if os.path.exists(self.path()):
+                with open(self.path(), 'rb') as f:
+                    lower_header = height - DGW_PAST_BLOCKS
+                    for height in range(height, lower_header-1, -1):
+                        f.seek(height*ZC_HEADER_SIZE)
+                        hd = f.read(ZC_HEADER_SIZE)
+                        if len(hd) < ZC_HEADER_SIZE:
+                            raise Exception(
+                                'Expected to read a full header.'
+                                ' This was only {} bytes'.format(len(hd)))
+                        dgw3_headers.append((height, bh2u(hd)))
+            cp.append((h, target, dgw3_headers))
         return cp
 
 
