@@ -23,7 +23,7 @@ class AmountEdit(MyLineEdit):
 
     def __init__(self, base_unit, is_int=False, parent=None):
         QLineEdit.__init__(self, parent)
-        # This seems sufficient for hundred-BTC amounts with 8 decimals
+        # This seems sufficient for hundred-PIV amounts with 8 decimals
         self.setFixedWidth(140)
         self.base_unit = base_unit
         self.textChanged.connect(self.numbify)

@@ -50,7 +50,7 @@ from .bitcoin import COIN
 from . import constants
 from . import blockchain
 from . import bitcoin
-from .blockchain import Blockchain, ZC_HEADER_SIZE
+from .blockchain import (Blockchain, ZC_HEADER_SIZE)
 from .interface import (Interface, serialize_server, deserialize_server,
                         RequestTimedOut, NetworkTimeout, BUCKET_NAME_OF_ONION_SERVERS)
 from .version import PROTOCOL_VERSION
