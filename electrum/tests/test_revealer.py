@@ -1,6 +1,6 @@
 from electrum.plugins.revealer.revealer import RevealerPlugin
 
-from . import SequentialTestCase
+from electrum.tests.cases import SequentialTestCase
 
 
 class TestRevealer(SequentialTestCase):

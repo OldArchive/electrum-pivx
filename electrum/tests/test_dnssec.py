@@ -2,7 +2,7 @@ import dns
 
 from electrum import dnssec
 
-from . import SequentialTestCase
+from electrum.tests.cases import SequentialTestCase
 from .test_bitcoin import needs_test_with_all_ecc_implementations
 
 

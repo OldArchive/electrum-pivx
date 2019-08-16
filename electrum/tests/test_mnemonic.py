@@ -2,12 +2,11 @@ from typing import NamedTuple, Optional
 
 from electrum import keystore
 from electrum import mnemonic
-from electrum import old_mnemonic
 from electrum.util import bh2u, bfh
-from electrum.mnemonic import is_new_seed, is_old_seed, seed_type
-from electrum.version import SEED_PREFIX_SW, SEED_PREFIX
+from electrum.mnemonic import is_new_seed, seed_type
+from electrum.version import SEED_PREFIX
 
-from . import SequentialTestCase
+from electrum.tests.cases import SequentialTestCase
 from .test_wallet_vertical import UNICODE_HORROR, UNICODE_HORROR_HEX
 
 
@@ -24,14 +23,14 @@ class SeedTestCase(NamedTuple):
 
 SEED_TEST_CASES = {
     'english': SeedTestCase(
-        words='wild father tree among universe such mobile favorite target dynamic credit identify',
-        seed_version=SEED_PREFIX_SW,
-        bip32_seed='aac2a6302e48577ab4b46f23dbae0774e2e62c796f797d0a1b5faeb528301e3064342dafb79069e7c4c6b8c38ae11d7a973bec0d4f70626f8cc5184a8d0b0756'),
+        words='what vocal wage wealth renew busy emerge execute rival soda card auto',
+        seed_version=SEED_PREFIX,
+        bip32_seed='1139b2701f261290ccce5d1d91658ac017c835807147b758ed96ac2b37fbe77b3eb108ae45b976a770bc58bc23267916ff462b8c34f721c5109f55d1b933f01d'),
     'english_with_passphrase': SeedTestCase(
-        words='wild father tree among universe such mobile favorite target dynamic credit identify',
-        seed_version=SEED_PREFIX_SW,
+        words='what vocal wage wealth renew busy emerge execute rival soda card auto',
+        seed_version=SEED_PREFIX,
         passphrase='Did you ever hear the tragedy of Darth Plagueis the Wise?',
-        bip32_seed='4aa29f2aeb0127efb55138ab9e7be83b36750358751906f86c662b21a1ea1370f949e6d1a12fa56d3d93cadda93038c76ac8118597364e46f5156fde6183c82f'),
+        bip32_seed='3cdb87dfa132a93d889c3bdd9ebd5b9c421ff1d85ea0d32644c167cedaa8c8dc0e9364d6fc9a54d90a00a74dce881c2cb3989961e96fa72876a9790f542b7bda'),
     'japanese': SeedTestCase(
         lang='ja',
         words='なのか ひろい しなん まなぶ つぶす さがす おしゃれ かわく おいかける けさき かいとう さたん',
@@ -48,20 +47,20 @@ SEED_TEST_CASES = {
         bip32_seed='251ee6b45b38ba0849e8f40794540f7e2c6d9d604c31d68d3ac50c034f8b64e4bc037c5e1e985a2fed8aad23560e690b03b120daf2e84dceb1d7857dda042457'),
     'chinese': SeedTestCase(
         lang='zh',
-        words='眼 悲 叛 改 节 跃 衡 响 疆 股 遂 冬',
-        words_hex='e79cbc20e682b220e58f9b20e694b920e88a8220e8b78320e8a1a120e5938d20e7968620e882a120e9818220e586ac',
-        seed_version=SEED_PREFIX_SW,
-        entropy=3083737086352778425940060465574397809099,
-        bip32_seed='0b9077db7b5a50dbb6f61821e2d35e255068a5847e221138048a20e12d80b673ce306b6fe7ac174ebc6751e11b7037be6ee9f17db8040bb44f8466d519ce2abf'),
+        words='煮 驻 化 唱 锋 炮 当 卢 川 熔 曰 跨',
+        words_hex='e785ae20e9a9bb20e58c9620e594b120e9948b20e782ae20e5bd9320e58da220e5b79d20e7869420e69bb020e8b7a8',
+        seed_version=SEED_PREFIX,
+        entropy=3767017487582277809014027973551483866900,
+        bip32_seed='0e1980c2b6c4896664cf8b56c3186d65b005e828920442964051a60ebba4b30f9b4dd99c81d0b5dd32be73582bdfa8b8be02e29cb330dac503ceed6d632cc6d9'),
     'chinese_with_passphrase': SeedTestCase(
         lang='zh',
-        words='眼 悲 叛 改 节 跃 衡 响 疆 股 遂 冬',
-        words_hex='e79cbc20e682b220e58f9b20e694b920e88a8220e8b78320e8a1a120e5938d20e7968620e882a120e9818220e586ac',
-        seed_version=SEED_PREFIX_SW,
-        entropy=3083737086352778425940060465574397809099,
+        words='煮 驻 化 唱 锋 炮 当 卢 川 熔 曰 跨',
+        words_hex='e785ae20e9a9bb20e58c9620e594b120e9948b20e782ae20e5bd9320e58da220e5b79d20e7869420e69bb020e8b7a8',
+        seed_version=SEED_PREFIX,
+        entropy=3767017487582277809014027973551483866900,
         passphrase='给我一些测试向量谷歌',
         passphrase_hex='e7bb99e68891e4b880e4ba9be6b58be8af95e59091e9878fe8b0b7e6ad8c',
-        bip32_seed='6c03dd0615cf59963620c0af6840b52e867468cc64f20a1f4c8155705738e87b8edb0fc8a6cee4085776cb3a629ff88bb1a38f37085efdbf11ce9ec5a7fa5f71'),
+        bip32_seed='627d3d71dccdb367729756452ab5a8d48a3aeaa55cce2fee441592a928a18cca7e950a1d7917b8855f39838471ba8aa8f468acc5329f67b0bc99c96f70cd7603'),
     'spanish': SeedTestCase(
         lang='es',
         words='almíbar tibio superar vencer hacha peatón príncipe matar consejo polen vehículo odisea',
@@ -78,20 +77,20 @@ SEED_TEST_CASES = {
         bip32_seed='363dec0e575b887cfccebee4c84fca5a3a6bed9d0e099c061fa6b85020b031f8fe3636d9af187bf432d451273c625e20f24f651ada41aae2c4ea62d87e9fa44c'),
     'spanish2': SeedTestCase(
         lang='es',
-        words='equipo fiar auge langosta hacha calor trance cubrir carro pulmón oro áspero',
-        words_hex='65717569706f20666961722061756765206c616e676f7374612068616368612063616c6f72207472616e63652063756272697220636172726f2070756c6d6fcc816e206f726f2061cc81737065726f',
-        seed_version=SEED_PREFIX_SW,
-        entropy=448346710104003081119421156750490206837,
-        bip32_seed='001ebce6bfde5851f28a0d44aae5ae0c762b600daf3b33fc8fc630aee0d207646b6f98b18e17dfe3be0a5efe2753c7cdad95860adbbb62cecad4dedb88e02a64'),
+        words='tiburón caer bola fracaso fecha usuario baile sesión momia tutor corazón juerga',
+        words_hex='74696275726fcc816e206361657220626f6c61206672616361736f206665636861207573756172696f206261696c6520736573696fcc816e206d6f6d6961207475746f7220636f72617a6fcc816e206a7565726761',
+        seed_version=SEED_PREFIX,
+        entropy=2526119849008492538961863188757911019317,
+        bip32_seed='504cf49b8eca95a01f5a4de9999f3aabdf1b9a93bb4dc09a2a4532b9d089a9114d70b87db1de14eaae629e374ee359ec66b2a9e32126f45f0829cc9ddfac9455'),
     'spanish3': SeedTestCase(
         lang='es',
-        words='vidrio jabón muestra pájaro capucha eludir feliz rotar fogata pez rezar oír',
-        words_hex='76696472696f206a61626fcc816e206d756573747261207061cc816a61726f206361707563686120656c756469722066656c697a20726f74617220666f676174612070657a2072657a6172206f69cc8172',
-        seed_version=SEED_PREFIX_SW,
-        entropy=3444792611339130545499611089352232093648,
+        words='tiburón caer bola fracaso fecha usuario baile sesión momia tutor corazón juerga',
+        words_hex='74696275726fcc816e206361657220626f6c61206672616361736f206665636861207573756172696f206261696c6520736573696fcc816e206d6f6d6961207475746f7220636f72617a6fcc816e206a7565726761',
+        seed_version=SEED_PREFIX,
+        entropy=2526119849008492538961863188757911019317,
         passphrase='¡Viva España! repiten veinte pueblos y al hablar dan fe del ánimo español... ¡Marquen arado martillo y clarín',
         passphrase_hex='c2a1566976612045737061c3b16121207265706974656e207665696e746520707565626c6f73207920616c206861626c61722064616e2066652064656c20c3a16e696d6f2065737061c3b16f6c2e2e2e20c2a14d61727175656e20617261646f206d617274696c6c6f207920636c6172c3ad6e',
-        bip32_seed='c274665e5453c72f82b8444e293e048d700c59bf000cacfba597629d202dcf3aab1cf9c00ba8d3456b7943428541fed714d01d8a0a4028fc3a9bb33d981cb49f'),
+        bip32_seed='89658718a34a62313470e8757f097cee97e415de2b687f7c031d02f5840f8f8f9022a9a18ca929633534085e6d53d7338a80229130b3fd58066a8c43c640a01f'),
 }
 
 
@@ -120,19 +119,9 @@ class Test_NewMnemonic(SequentialTestCase):
         iters = 10
         m = mnemonic.Mnemonic(lang='en')
         for _ in range(iters):
-            seed = m.make_seed("standard")
+            seed = m.make_seed()
             i = m.mnemonic_decode(seed)
             self.assertEqual(m.mnemonic_encode(i), seed)
-
-
-class Test_OldMnemonic(SequentialTestCase):
-
-    def test(self):
-        seed = '8edad31a95e7d59f8837667510d75a4d'
-        result = old_mnemonic.mn_encode(seed)
-        words = 'hardly point goal hallway patience key stone difference ready caught listen fact'
-        self.assertEqual(result, words.split())
-        self.assertEqual(old_mnemonic.mn_decode(result), seed)
 
 
 class Test_BIP39Checksum(SequentialTestCase):
@@ -145,28 +134,16 @@ class Test_BIP39Checksum(SequentialTestCase):
 
 
 class Test_seeds(SequentialTestCase):
-    """ Test old and new seeds. """
+    """ Test seeds. """
 
     mnemonics = {
-        ('cell dumb heartbeat north boom tease ship baby bright kingdom rare squeeze', 'old'),
-        ('cell dumb heartbeat north boom tease ' * 4, 'old'),
-        ('cell dumb heartbeat north boom tease ship baby bright kingdom rare badword', ''),
-        ('cElL DuMb hEaRtBeAt nOrTh bOoM TeAsE ShIp bAbY BrIgHt kInGdOm rArE SqUeEzE', 'old'),
-        ('   cElL  DuMb hEaRtBeAt nOrTh bOoM  TeAsE ShIp    bAbY BrIgHt kInGdOm rArE SqUeEzE   ', 'old'),
-        # below seed is actually 'invalid old' as it maps to 33 hex chars
-        ('hurry idiot prefer sunset mention mist jaw inhale impossible kingdom rare squeeze', 'old'),
         ('cram swing cover prefer miss modify ritual silly deliver chunk behind inform able', 'standard'),
         ('cram swing cover prefer miss modify ritual silly deliver chunk behind inform', ''),
         ('ostrich security deer aunt climb inner alpha arm mutual marble solid task', 'standard'),
         ('OSTRICH SECURITY DEER AUNT CLIMB INNER ALPHA ARM MUTUAL MARBLE SOLID TASK', 'standard'),
         ('   oStRiCh sEcUrItY DeEr aUnT ClImB       InNeR AlPhA ArM MuTuAl mArBlE   SoLiD TaSk  ', 'standard'),
         ('x8', 'standard'),
-        ('science dawn member doll dutch real can brick knife deny drive list', '2fa'),
         ('science dawn member doll dutch real ca brick knife deny drive list', ''),
-        (' sCience dawn   member doll Dutch rEAl can brick knife deny drive  lisT', '2fa'),
-        ('frost pig brisk excite novel report camera enlist axis nation novel desert', 'segwit'),
-        ('  fRoSt pig brisk excIte novel rePort CamEra enlist axis nation nOVeL dEsert ', 'segwit'),
-        ('9dk', 'segwit'),
     }
 
     def test_new_seed(self):
@@ -175,15 +152,6 @@ class Test_seeds(SequentialTestCase):
 
         seed = "cram swing cover prefer miss modify ritual silly deliver chunk behind inform"
         self.assertFalse(is_new_seed(seed))
-
-    def test_old_seed(self):
-        self.assertTrue(is_old_seed(" ".join(["like"] * 12)))
-        self.assertFalse(is_old_seed(" ".join(["like"] * 18)))
-        self.assertTrue(is_old_seed(" ".join(["like"] * 24)))
-        self.assertFalse(is_old_seed("not a seed"))
-
-        self.assertTrue(is_old_seed("0123456789ABCDEF" * 2))
-        self.assertTrue(is_old_seed("0123456789ABCDEF" * 4))
 
     def test_seed_type(self):
         for seed_words, _type in self.mnemonics:
