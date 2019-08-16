@@ -55,6 +55,85 @@ class TestBCDataStream(SequentialTestCase):
         self.assertEqual(s.read_bytes(1), b'')
 
 class TestTransaction(SequentialTestCase):
+    
+    @needs_test_with_all_ecc_implementations
+    def test_tx_unsigned(self):
+        expected = {
+            'inputs': [{
+                'type': 'p2pkh',
+                'address': 'D8CCLizdKW2XBFsGMXJUeHC64f1y5cKbiG',
+                'num_sig': 1,
+                'prevout_hash': '3140eb24b43386f35ba69e3875eb6c93130ac66201d01c58f598defc949a5c2a',
+                'prevout_n': 0,
+                'pubkeys': ['02e61d176da16edd1d258a200ad9759ef63adf8e14cd97f53227bae35cdb84d2f6'],
+                'scriptSig': '01ff4c53ff0221312b03ef2afea18000000089689bff23e1e7fb2f161daa37270a97a3d8c2e537584b2d304ecb47b86d21fc021b010d3bd425f8cf2e04824bfdf1f1f5ff1d51fadd9a41f9e3fb8dd3403b1bfe00000000',
+                'sequence': 4294967295,
+                'signatures': [None],
+                'x_pubkeys': ['ff0221312b03ef2afea18000000089689bff23e1e7fb2f161daa37270a97a3d8c2e537584b2d304ecb47b86d21fc021b010d3bd425f8cf2e04824bfdf1f1f5ff1d51fadd9a41f9e3fb8dd3403b1bfe00000000']}],
+            'lockTime': 0,
+            'outputs': [{
+                'address': 'D8LP5qWqH9CrMxFQ1mpDm7oSabhq9PCdvJ',
+                'prevout_n': 0,
+                'scriptPubKey': '76a914230ac37834073a42146f11ef8414ae929feaafc388ac',
+                'type': TYPE_ADDRESS,
+                'value': 1000000}],
+            'partial': True,
+            'version': 1
+        }
+        tx = transaction.Transaction(unsigned_blob)
+        self.assertEqual(tx.deserialize(), expected)
+        self.assertEqual(tx.deserialize(), None)
+
+        self.assertEqual(tx.as_dict(), {'hex': unsigned_blob, 'complete': False, 'final': True})
+        self.assertEqual(tx.get_outputs_for_UI(), [TxOutputForUI('D8LP5qWqH9CrMxFQ1mpDm7oSabhq9PCdvJ', 1000000)])
+
+        self.assertTrue(tx.has_address('D8LP5qWqH9CrMxFQ1mpDm7oSabhq9PCdvJ'))
+        self.assertTrue(tx.has_address('D8CCLizdKW2XBFsGMXJUeHC64f1y5cKbiG'))
+        self.assertFalse(tx.has_address('Xn6ZqLcuKpYoSkiXKmLMWKtoF2sNExHwjT'))
+
+        self.assertEqual(tx.serialize(), unsigned_blob)
+
+        tx.update_signatures(signed_blob_signatures)
+        self.assertEqual(tx.raw, signed_blob)
+
+        tx.update(unsigned_blob)
+        tx.raw = None
+        blob = str(tx)
+        self.assertEqual(transaction.deserialize(blob), expected)
+
+    @needs_test_with_all_ecc_implementations
+    def test_tx_signed(self):
+        expected = {
+            'inputs': [{'address': None,
+                'num_sig': 0,
+                'prevout_hash': '3140eb24b43386f35ba69e3875eb6c93130ac66201d01c58f598defc949a5c2a',
+                'prevout_n': 0,
+                'scriptSig': '493046022100a82bbc57a0136751e5433f41cf000b3f1a99c6744775e76ec764fb78c54ee100022100f9e80b7de89de861dc6fb0c1429d5da72c2b6b2ee2406bc9bfb1beedd729d985012102e61d176da16edd1d258a200ad9759ef63adf8e14cd97f53227bae35cdb84d2f6',
+                'sequence': 4294967295,
+                'type': 'unknown'}],
+            'lockTime': 0,
+            'outputs': [{
+                'address': 'D8LP5qWqH9CrMxFQ1mpDm7oSabhq9PCdvJ',
+                'prevout_n': 0,
+                'scriptPubKey': '76a914230ac37834073a42146f11ef8414ae929feaafc388ac',
+                'type': TYPE_ADDRESS,
+                'value': 1000000}],
+            'partial': False,
+            'version': 1
+        }
+        tx = transaction.Transaction(signed_blob)
+        self.assertEqual(tx.deserialize(), expected)
+        self.assertEqual(tx.deserialize(), None)
+        self.assertEqual(tx.as_dict(), {'hex': signed_blob, 'complete': True, 'final': True})
+
+        self.assertEqual(tx.serialize(), signed_blob)
+
+        tx.update_signatures(signed_blob_signatures)
+
+        self.assertEqual(tx.estimated_total_size(), 193)
+        self.assertEqual(tx.estimated_base_size(), 193)
+        self.assertEqual(tx.estimated_weight(), 772)
+        self.assertEqual(tx.estimated_size(), 193)
 
     def test_estimated_output_size(self):
         estimated_output_size = transaction.Transaction.estimated_output_size

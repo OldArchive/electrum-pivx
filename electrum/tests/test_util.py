@@ -49,6 +49,39 @@ class TestUtil(SequentialTestCase):
         result = parse_URI(uri)
         self.assertEqual(expected, result)
 
+    def test_parse_URI_address(self):
+        self._do_test_parse_URI('pivx:D8f2XugFex5p1RZJKYHQNXHFE6Xs6Pmrgm',
+                                {'address': 'D8f2XugFex5p1RZJKYHQNXHFE6Xs6Pmrgm'})
+
+    def test_parse_URI_only_address(self):
+        self._do_test_parse_URI('D8f2XugFex5p1RZJKYHQNXHFE6Xs6Pmrgm',
+                                {'address': 'D8f2XugFex5p1RZJKYHQNXHFE6Xs6Pmrgm'})
+
+
+    def test_parse_URI_address_label(self):
+        self._do_test_parse_URI('pivx:D8f2XugFex5p1RZJKYHQNXHFE6Xs6Pmrgm?label=electrum%20test',
+                                {'address': 'D8f2XugFex5p1RZJKYHQNXHFE6Xs6Pmrgm', 'label': 'electrum test'})
+
+    def test_parse_URI_address_message(self):
+        self._do_test_parse_URI('pivx:D8f2XugFex5p1RZJKYHQNXHFE6Xs6Pmrgm?message=electrum%20test',
+                                {'address': 'D8f2XugFex5p1RZJKYHQNXHFE6Xs6Pmrgm', 'message': 'electrum test', 'memo': 'electrum test'})
+
+    def test_parse_URI_address_amount(self):
+        self._do_test_parse_URI('pivx:D8f2XugFex5p1RZJKYHQNXHFE6Xs6Pmrgm?amount=0.0003',
+                                {'address': 'D8f2XugFex5p1RZJKYHQNXHFE6Xs6Pmrgm', 'amount': 30000})
+
+    def test_parse_URI_address_request_url(self):
+        self._do_test_parse_URI('pivx:D8f2XugFex5p1RZJKYHQNXHFE6Xs6Pmrgm?r=http://domain.tld/page?h%3D2a8628fc2fbe',
+                                {'address': 'D8f2XugFex5p1RZJKYHQNXHFE6Xs6Pmrgm', 'r': 'http://domain.tld/page?h=2a8628fc2fbe'})
+
+    def test_parse_URI_ignore_args(self):
+        self._do_test_parse_URI('pivx:D8f2XugFex5p1RZJKYHQNXHFE6Xs6Pmrgm?test=test',
+                                {'address': 'D8f2XugFex5p1RZJKYHQNXHFE6Xs6Pmrgm', 'test': 'test'})
+
+    def test_parse_URI_no_address_request_url(self):
+        self._do_test_parse_URI('pivx:?r=http://domain.tld/page?h%3D2a8628fc2fbe',
+                                {'r': 'http://domain.tld/page?h=2a8628fc2fbe'})
+
     def test_parse_URI_invalid_address(self):
         self.assertRaises(BaseException, parse_URI, 'pivx:invalidaddress')
 
