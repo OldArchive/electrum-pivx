@@ -53,9 +53,9 @@ class AbstractNet:
 class BitcoinMainnet(AbstractNet):
 
     TESTNET = False
-    WIF_PREFIX = 0xD4
-    ADDRTYPE_P2PKH = 0x1E
-    ADDRTYPE_P2SH = 0xD
+    WIF_PREFIX = 212
+    ADDRTYPE_P2PKH = 30
+    ADDRTYPE_P2SH = 13
     SEGWIT_HRP = "pivx"
     GENESIS = "0000041e482b9b9691d98eefb48473405c0b8ec31b76df3797c74a78680ef818"
     DEFAULT_PORTS = {'t': '50001', 's': '50002'}
