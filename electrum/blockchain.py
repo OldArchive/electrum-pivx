@@ -99,7 +99,7 @@ def hash_raw_header(headerStr: str) -> str:
     if header[0] >= ZC_VERSION:
         return hash_encode(sha256d(header))
     else:
-    return hash_encode(quark_hash.getPoWHash(bfh(header)))
+        return hash_encode(quark_hash.getPoWHash(bfh(header)))
 
 
 # key: blockhash hex at forkpoint
