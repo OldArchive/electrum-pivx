@@ -30,8 +30,8 @@ from .crypto import sha256d
 from . import constants
 from .util import bfh, bh2u
 from .simple_config import SimpleConfig
-from .crypto import PoWHash
 from .logging import get_logger, Logger
+import pivx_quark_hash as quark_hash
 
 
 _logger = get_logger(__name__)
