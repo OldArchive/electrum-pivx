@@ -149,20 +149,6 @@ class TestFiat(SequentialTestCase):
 
 class TestCreateRestoreWallet(WalletTestCase):
 
-    def test_create_new_wallet(self):
-        passphrase = 'mypassphrase'
-        password = 'mypassword'
-        encrypt_file = True
-        d = create_new_wallet(path=self.wallet_path,
-                              passphrase=passphrase,
-                              password=password,
-                              encrypt_file=encrypt_file)
-        wallet = d['wallet']  # type: Standard_Wallet
-        wallet.check_password(password)
-        self.assertEqual(passphrase, wallet.keystore.get_passphrase(password))
-        self.assertEqual(d['seed'], wallet.keystore.get_seed(password))
-        self.assertEqual(encrypt_file, wallet.storage.is_encrypted())
-
     def test_restore_wallet_from_text_mnemonic(self):
         text = 'twenty oil method educate cloud reunion worry stay turtle nut volume fit'
         passphrase = ''
