@@ -78,6 +78,10 @@ class TestUtil(SequentialTestCase):
         self._do_test_parse_URI('pivx:D8f2XugFex5p1RZJKYHQNXHFE6Xs6Pmrgm?test=test',
                                 {'address': 'D8f2XugFex5p1RZJKYHQNXHFE6Xs6Pmrgm', 'test': 'test'})
 
+    def test_parse_URI_multiple_args(self):
+        self._do_test_parse_URI('pivx:D8f2XugFex5p1RZJKYHQNXHFE6Xs6Pmrgm?amount=0.00004&label=electrum-test&message=electrum%20test&test=none&r=http://domain.tld/page',
+                                {'address': 'D8f2XugFex5p1RZJKYHQNXHFE6Xs6Pmrgm', 'amount': 4000, 'label': 'electrum-test', 'message': u'electrum test', 'memo': u'electrum test', 'r': 'http://domain.tld/page', 'test': 'none'})
+
     def test_parse_URI_no_address_request_url(self):
         self._do_test_parse_URI('pivx:?r=http://domain.tld/page?h%3D2a8628fc2fbe',
                                 {'r': 'http://domain.tld/page?h=2a8628fc2fbe'})

@@ -149,6 +149,34 @@ class Test_bitcoin(SequentialTestCase):
         self.assertEqual(inf, D + (-1) * G)
         self.assertNotEqual(A, B)
 
+    @needs_test_with_all_ecc_implementations
+    def test_msg_signing(self):
+        msg1 = b'Chancellor on brink of second bailout for banks'
+        msg2 = b'Electrum'
+
+        def sign_message_with_wif_privkey(wif_privkey, msg):
+            txin_type, privkey, compressed = deserialize_privkey(wif_privkey)
+            key = ecc.ECPrivkey(privkey)
+            return key.sign_message(msg, compressed)
+
+        sig1 = sign_message_with_wif_privkey(
+            'YNimAB1DHy2UrRN2ce8yNVaBHRpU7gjnqY2ogcGjFMMrdWJja5Rb', msg1)
+        addr1 = 'DRWitZjTupNRGhGrztniNi9GDH3JmVT3kh'
+        sig2 = sign_message_with_wif_privkey(
+            'YQ7zo2kTHEKfKCm18MJnK1ALVBtLPVdq8z4oLMgotWBHMX1bR7V8', msg2)
+        addr2 = 'D5C7eBMk4yPy7LnikE1EpVdjhfkEhAyNvH'
+
+        sig1_b64 = base64.b64encode(sig1)
+        sig2_b64 = base64.b64encode(sig2)
+
+        self.assertEqual(sig1_b64, b'HyS2hiLqrt8/+uZgYoXB+/qBv9cQ/WVw8QeySKdShihnGe1OBLnVARI8Xx4luCyts2qhy65XqqRYDpHdzHM0WvM=')
+        self.assertEqual(sig2_b64, b'IApHxAK9ERCozaXEz3DeiLOiJYfJ6WM0bbCTLKZO0Qygfs6GzqAUbCFbIZmizjK1wT2Ow6kQJeEs+uUSDUaeiDQ=')
+
+        self.assertTrue(ecc.verify_message_with_address(addr1, sig1, msg1))
+        self.assertTrue(ecc.verify_message_with_address(addr2, sig2, msg2))
+
+        self.assertFalse(ecc.verify_message_with_address(addr1, b'wrong', msg1))
+        self.assertFalse(ecc.verify_message_with_address(addr1, sig2, msg1))
 
     @needs_test_with_all_aes_implementations
     @needs_test_with_all_ecc_implementations
@@ -325,6 +353,14 @@ class Test_bitcoin(SequentialTestCase):
         self.assertEqual(add_number_to_script(8388608), bfh('0400008000'))
         self.assertEqual(add_number_to_script(2147483647), bfh('04ffffff7f'))
 
+    def test_address_to_script(self):
+        # base58 P2PKH
+        self.assertEqual(address_to_script('D8phy4sU3chZHCYnTWPkUhHFkvqwzWyKbD'), '76a91428662c67561b95c79d2257d2a93d9d151c977e9188ac')
+        self.assertEqual(address_to_script('DFNwDFdhqTuGsp4G1HvZie1C7TDoRdP4Zb'), '76a914704f4b81cadb7bf7e68c08cd3657220f680f863c88ac')
+
+        # base58 P2SH
+        self.assertEqual(address_to_script('6JGfHAzV5oG2QM2pmoZquwvV9qm1w9yv4A'), 'a9142a84cf00d47f699ee7bbc1dea5ec1bdecb4ac15487')
+        self.assertEqual(address_to_script('6cgZsAS2SZN895boDQvxx7pvMFuMDwGfzQ'), 'a914f47c8954e421031ad04ecd8e7752c9479206b9d387')
 
 class Test_bitcoin_testnet(TestCaseForTestnet):
 
