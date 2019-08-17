@@ -33,3 +33,7 @@ contrib/build-linux/appimage/.cache/
 contrib/android_debug.keystore
 
 contrib/CalinsQRReader
+
+tests.log
+
+contrib/osx/CalinsQRReader
