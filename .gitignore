@@ -37,3 +37,9 @@ contrib/CalinsQRReader
 tests.log
 
 contrib/osx/CalinsQRReader
+
+electrum/gui/.DS_Store
+
+electrum/.DS_Store
+
+.DS_Store
