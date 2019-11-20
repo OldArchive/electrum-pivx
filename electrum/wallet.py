@@ -717,7 +717,6 @@ class Abstract_Wallet(AddressSynchronizer):
             self.check_address(addr)
         max_change = self.max_change_outputs if self.multiple_change else 1
         return change_addrs[:max_change]
-
     def make_unsigned_transaction(self, coins, outputs, config, fixed_fee=None,
                                   change_addr=None, is_sweep=False):
         # check outputs
@@ -725,7 +724,7 @@ class Abstract_Wallet(AddressSynchronizer):
         for i, o in enumerate(outputs):
             if o.type == TYPE_ADDRESS:
                 if not is_address(o.address):
-                    raise Exception("Invalid bitcoin address: {}".format(o.address))
+                    raise Exception("Invalid PIVX address: {}".format(o.address))
             if o.value == '!':
                 if i_max is not None:
                     raise Exception("More than one output set to spend max")
@@ -736,6 +735,28 @@ class Abstract_Wallet(AddressSynchronizer):
 
         for item in coins:
             self.add_input_info(item)
+
+        # change address
+        # if we leave it empty, coin_chooser will set it
+        change_addrs = []
+        if change_addr:
+            change_addrs = [change_addr]
+        elif self.use_change:
+            # Recalc and get unused change addresses
+            addrs = self.calc_unused_change_addresses()
+            # New change addresses are created only after a few
+            # confirmations.
+            if addrs:
+                # if there are any unused, select all
+                change_addrs = addrs
+            else:
+                # if there are none, take one randomly from the last few
+                addrs = self.get_change_addresses()[-self.gap_limit_for_change:]
+                change_addrs = [random.choice(addrs)] if addrs else []
+        for addr in change_addrs:
+            # note that change addresses are not necessarily ismine
+            # in which case this is a no-op
+            self.check_address(addr)
 
         # Fee estimator
         if fixed_fee is None:
@@ -749,44 +770,14 @@ class Abstract_Wallet(AddressSynchronizer):
 
         if i_max is None:
             # Let the coin chooser select the coins to spend
+            max_change = self.max_change_outputs if self.multiple_change else 1
             coin_chooser = coinchooser.get_coin_chooser(config)
-            # If there is an unconfirmed RBF tx, merge with it
-            base_tx = self.get_unconfirmed_base_tx_for_batching()
-            if config.get('batch_rbf', False) and base_tx:
-                # make sure we don't try to spend change from the tx-to-be-replaced:
-                coins = [c for c in coins if c['prevout_hash'] != base_tx.txid()]
-                is_local = self.get_tx_height(base_tx.txid()).height == TX_HEIGHT_LOCAL
-                base_tx = Transaction(base_tx.serialize())
-                base_tx.deserialize(force_full_parse=True)
-                base_tx.remove_signatures()
-                base_tx.add_inputs_info(self)
-                base_tx_fee = base_tx.get_fee()
-                relayfeerate = Decimal(self.relayfee()) / 1000
-                original_fee_estimator = fee_estimator
-                def fee_estimator(size: Union[int, float, Decimal]) -> int:
-                    size = Decimal(size)
-                    lower_bound = base_tx_fee + round(size * relayfeerate)
-                    lower_bound = lower_bound if not is_local else 0
-                    return int(max(lower_bound, original_fee_estimator(size)))
-                txi = base_tx.inputs()
-                txo = list(filter(lambda o: not self.is_change(o.address), base_tx.outputs()))
-                old_change_addrs = [o.address for o in base_tx.outputs() if self.is_change(o.address)]
-            else:
-                txi = []
-                txo = []
-                old_change_addrs = []
-            # change address. if empty, coin_chooser will set it
-            change_addrs = self.get_change_addresses_for_new_transaction(change_addr or old_change_addrs)
-            tx = coin_chooser.make_tx(coins, txi, outputs[:] + txo, change_addrs,
+            txi = []
+            txo = []
+            tx = coin_chooser.make_tx(coins, txi, outputs[:] + txo, change_addrs[:max_change],
                                       fee_estimator, self.dust_threshold())
         else:
-            # "spend max" branch
-            # note: This *will* spend inputs with negative effective value (if there are any).
-            #       Given as the user is spending "max", and so might be abandoning the wallet,
-            #       try to include all UTXOs, otherwise leftover might remain in the UTXO set
-            #       forever. see #5433
-            # note: Actually it might be the case that not all UTXOs from the wallet are
-            #       being spent if the user manually selected UTXOs.
+            # FIXME?? this might spend inputs with negative effective value...
             sendable = sum(map(lambda x:x['value'], coins))
             outputs[i_max] = outputs[i_max]._replace(value=0)
             tx = Transaction.from_io(coins, outputs[:])

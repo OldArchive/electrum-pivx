@@ -314,25 +314,80 @@ class Wallet_2fa(Multisig_Wallet):
             raise Exception('too high trustedcoin fee ({} for {} txns)'.format(price, n))
         return price
 
-    def make_unsigned_transaction(self, coins, outputs, config, fixed_fee=None,
+        def make_unsigned_transaction(self, coins, outputs, config, fixed_fee=None,
                                   change_addr=None, is_sweep=False):
-        mk_tx = lambda o: Multisig_Wallet.make_unsigned_transaction(
-            self, coins, o, config, fixed_fee, change_addr)
-        fee = self.extra_fee(config) if not is_sweep else 0
-        if fee:
-            address = self.billing_info['billing_address_segwit']
-            fee_output = TxOutput(TYPE_ADDRESS, address, fee)
-            try:
-                tx = mk_tx(outputs + [fee_output])
-            except NotEnoughFunds:
-                # TrustedCoin won't charge if the total inputs is
-                # lower than their fee
-                tx = mk_tx(outputs)
-                if tx.input_value() >= fee:
-                    raise
-                self.logger.info("not charging for this tx")
+        # check outputs
+        i_max = None
+        for i, o in enumerate(outputs):
+            if o.type == TYPE_ADDRESS:
+                if not is_address(o.address):
+                    raise Exception("Invalid PIVX address: {}".format(o.address))
+            if o.value == '!':
+                if i_max is not None:
+                    raise Exception("More than one output set to spend max")
+                i_max = i
+
+        if fixed_fee is None and config.fee_per_kb() is None:
+            raise NoDynamicFeeEstimates()
+
+        for item in coins:
+            self.add_input_info(item)
+
+        # change address
+        # if we leave it empty, coin_chooser will set it
+        change_addrs = []
+        if change_addr:
+            change_addrs = [change_addr]
+        elif self.use_change:
+            # Recalc and get unused change addresses
+            addrs = self.calc_unused_change_addresses()
+            # New change addresses are created only after a few
+            # confirmations.
+            if addrs:
+                # if there are any unused, select all
+                change_addrs = addrs
+            else:
+                # if there are none, take one randomly from the last few
+                addrs = self.get_change_addresses()[-self.gap_limit_for_change:]
+                change_addrs = [random.choice(addrs)] if addrs else []
+        for addr in change_addrs:
+            # note that change addresses are not necessarily ismine
+            # in which case this is a no-op
+            self.check_address(addr)
+
+        # Fee estimator
+        if fixed_fee is None:
+            fee_estimator = config.estimate_fee
+        elif isinstance(fixed_fee, Number):
+            fee_estimator = lambda size: fixed_fee
+        elif callable(fixed_fee):
+            fee_estimator = fixed_fee
         else:
-            tx = mk_tx(outputs)
+            raise Exception('Invalid argument fixed_fee: %s' % fixed_fee)
+
+        if i_max is None:
+            # Let the coin chooser select the coins to spend
+            max_change = self.max_change_outputs if self.multiple_change else 1
+            coin_chooser = coinchooser.get_coin_chooser(config)
+            txi = []
+            txo = []
+            tx = coin_chooser.make_tx(coins, txi, outputs[:] + txo, change_addrs[:max_change],
+                                      fee_estimator, self.dust_threshold())
+        else:
+            # FIXME?? this might spend inputs with negative effective value...
+            sendable = sum(map(lambda x:x['value'], coins))
+            outputs[i_max] = outputs[i_max]._replace(value=0)
+            tx = Transaction.from_io(coins, outputs[:])
+            fee = fee_estimator(tx.estimated_size())
+            amount = sendable - tx.output_value() - fee
+            if amount < 0:
+                raise NotEnoughFunds()
+            outputs[i_max] = outputs[i_max]._replace(value=amount)
+            tx = Transaction.from_io(coins, outputs[:])
+
+        # Timelock tx to current height.
+        tx.locktime = get_locktime_for_new_transaction(self.network)
+        run_hook('make_unsigned_transaction', self, tx)
         return tx
 
     def on_otp(self, tx, otp):
